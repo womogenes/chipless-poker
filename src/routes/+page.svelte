@@ -50,18 +50,37 @@ const stepGame = () => {
     $gameState.roundWinner = -1;
     return;
   }
-  $gameState.currentPlayerIdx++;
+  let foldCount = 0;
+  while ($players[$gameState.currentPlayerIdx].hasFolded) {
+    $gameState.currentPlayerIdx++;
+    foldCount++;
+    if ($gameState.currentPlayerIdx >= $players.length) {
+      if (foldCount == $players.length - 1) break;
+      $gameState.currentPlayerIdx = 0;
+      foldCount = 0;
+    }
+  }
+  if (foldCount == $players.length - 1) {
+    for (let i = 0; i < $players.length; i++) {
+      if (!$players[i].hasFolded) $gameState.roundWinner = i;
+    }
+    console.log($gameState.roundWinner, $players);
+    $gameState.atRoundEnd = true;
+    return;
+  }
   if ($gameState.currentPlayerIdx >= $players.length) {
     $gameState.currentPlayerIdx = 0;
     $gameState.currentHand++;
-    // Reset all bets:
-    for (let i = 0; i < $players.length; i++) {
-      $players[i].currentBet = 0;
-    }
+
     if ($gameState.currentHand >= 3) {
       if ($gameState.didRoundEnd) {
         $gameState.currentHand = 0;
         $gameState.round++;
+        // Reset all bets:
+        for (let i = 0; i < $players.length; i++) {
+          $players[i].currentBet = 0;
+          $players[i].hasFolded = false;
+        }
       } else {
         $gameState.atRoundEnd = true;
       }
@@ -69,12 +88,24 @@ const stepGame = () => {
   }
 };
 
-const raiseBet = (playerIdx, raiseValue) => {
-  console.log(playerIdx, raiseValue);
-  $players[playerIdx].currentBet = raiseValue;
-  $gameState.minimumBet = raiseValue;
-  $gameState.pot += raiseValue;
+const raiseBet = (playerIdx, raiseVal) => {
+  $players[playerIdx].currentBet = raiseVal;
+  $players[playerIdx].balance -= raiseVal;
+  $gameState.minimumBet = raiseVal;
+  $gameState.pot += raiseVal;
+  $raiseValue = 0;
   stepGame();
+};
+
+const finishRound = () => {
+  stepGame();
+  // $players[$gameState.roundWinner].balance += $gameState.pot;
+  // $gameState.currentHand = 0;
+  // $gameState.currentPlayerIdx = 0;
+  // $gameState.didRoundEnd = false;
+  // $gameState.atRoundEnd = false;
+  // $gameState.round = 0;
+  // $gameState.minimumBet = 0;
 };
 
 const getCurrentHandName = () => {
@@ -96,7 +127,8 @@ const getCurrentHandName = () => {
                   name: getUID(8),
                   color: '#ff0000',
                   balance: $initBalance,
-                  currentBet: 0
+                  currentBet: 0,
+                  hasFolded: false
                 }];
               }}
         >
@@ -213,7 +245,7 @@ const getCurrentHandName = () => {
     </Drawer.Root>
   </div>
 
-  <div class="flex items-center divide-x text-sm">
+  <div class="flex w-full items-center justify-center divide-x text-sm">
     <span class="px-4 pl-0">{getCurrentHandName()}</span>
     <span class="px-4">Minimum Bet: {$gameState.minimumBet}</span>
     <span class="px-4 pr-0">Pot: ${$gameState.pot}</span>
@@ -223,13 +255,7 @@ const getCurrentHandName = () => {
   <div class="mb-32 flex w-full flex-grow flex-col gap-2 pt-5">
     <p class="font-bold">Active Players</p>
     <div class="overflow-y-auto border-t">
-      <RadioGroup.Root
-        value={0}
-        onValueChange={() => {
-          console.log("here", this);
-        $gameState.roundWinner = this.value;
-      }}
-      >
+      <RadioGroup.Root bind:value={$gameState.roundWinner}>
         {#each $players as player, playerIdx (player.id)}
           <div class="player flex items-center gap-2 border-b py-3">
             <div class="h-4 w-4 rounded-full" style={`background-color: ${player.color}`}></div>
@@ -237,6 +263,8 @@ const getCurrentHandName = () => {
               <span>{player.name}</span>
               {#if $gameState.atRoundEnd}
                 <RadioGroup.Item id={playerIdx} value={playerIdx} />
+                {#if playerIdx === parseInt($gameState.roundWinner)}
+                  <div class="rounded-md bg-neutral-100 px-2 py-1 text-sm">winner</div>{/if}
               {:else if $gameState.currentPlayerIdx == playerIdx}
                 <LoadingIcon />
               {/if}
@@ -268,7 +296,7 @@ const getCurrentHandName = () => {
   {/if}
 
   <!-- Actions -->
-  <div class="background-blur-sm sticky bottom-6 flex w-full flex-col gap-4 bg-white pt-4">
+  <div class="background-blur-sm sticky bottom-0 flex w-full flex-col gap-4 bg-white pb-5 pt-4">
     <!-- division for -->
     <div class="flex items-center justify-between gap-4">
       <!-- <Input placeholder="Raise value" value="5" type="number" min="5" max="200" step="5" /> -->
@@ -305,6 +333,7 @@ const getCurrentHandName = () => {
         <Button
           class="flex flex-col items-center gap-4 py-12"
           disabled={$gameState.roundWinner == -1}
+          on:click={finishRound}
         >
           <div><ChevronsRightIcon /></div>
           <p class="font-semibold uppercase tracking-wider">Finish round</p>
@@ -314,9 +343,12 @@ const getCurrentHandName = () => {
           <Button
             class="flex flex-col items-center gap-4 py-12"
             on:click={() => {
-                  raiseBet($gameState.currentPlayerIdx, $raiseValue);
-                  $raiseValue = 0;
-                }}
+              raiseBet(
+                $gameState.currentPlayerIdx, Math.max(0, $gameState.minimumBet - $players[$gameState.currentPlayerIdx].currentBet)
+              );
+              $raiseValue = 0;
+              stepGame();
+            }}
           >
             <div>
               {#if $players[$gameState.currentPlayerIdx].currentBet >= $gameState.minimumBet}
@@ -333,11 +365,21 @@ const getCurrentHandName = () => {
               {/if}
             </p>
           </Button>
-          <Button class="flex flex-col items-center gap-4 py-12" disabled={$raiseValue <= 0}>
+          <Button
+            class="flex flex-col items-center gap-4 py-12"
+            disabled={$raiseValue <= 0}
+            on:click={() => raiseBet($gameState.currentPlayerIdx, $raiseValue)}
+          >
             <div><PlusCircleIcon /></div>
             <p class="font-semibold uppercase tracking-wider">Raise</p>
           </Button>
-          <Button class="flex flex-col items-center gap-4 py-12">
+          <Button
+            class="flex flex-col items-center gap-4 py-12"
+            on:click={()=>{
+            $players[$gameState.currentPlayerIdx].hasFolded = true;
+            stepGame();
+          }}
+          >
             <div><XCircleIcon /></div>
             <p class="font-semibold uppercase tracking-wider">Fold</p>
           </Button>

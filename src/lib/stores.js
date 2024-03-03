@@ -18,6 +18,7 @@ export let players = writableSync([
     color: '#dc2626',
     balance: 200,
     currentBet: 0,
+    hasFolded: false,
   },
   {
     id: getUID(8),
@@ -25,6 +26,7 @@ export let players = writableSync([
     color: '#4f56ff',
     balance: 200,
     currentBet: 0,
+    hasFolded: false,
   },
 ]);
 
