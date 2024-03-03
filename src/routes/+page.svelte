@@ -50,9 +50,8 @@ const stepGame = () => {
     $gameState.roundWinner = -1;
     return;
   }
-  $gameState.currentPlayerIdx++;
-  /* let foldCount = 0;
-  while ($players[$gameState.currentPlayerIdx].hasFolded) {
+  let foldCount = 0;
+  do {
     $gameState.currentPlayerIdx++;
     foldCount++;
     if ($gameState.currentPlayerIdx >= $players.length) {
@@ -60,15 +59,15 @@ const stepGame = () => {
       $gameState.currentPlayerIdx = 0;
       foldCount = 0;
     }
-  } */
-  /* if (foldCount == $players.length - 1) {
+  } while ($players[$gameState.currentPlayerIdx].hasFolded);
+  if (foldCount == $players.length - 1) {
     for (let i = 0; i < $players.length; i++) {
       if (!$players[i].hasFolded) $gameState.roundWinner = i;
     }
     console.log($gameState.roundWinner, $players);
     $gameState.atRoundEnd = true;
     return;
-  } */
+  }
   if ($gameState.currentPlayerIdx >= $players.length) {
     $gameState.currentPlayerIdx = 0;
     $gameState.currentHand++;
