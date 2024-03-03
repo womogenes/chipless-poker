@@ -51,15 +51,17 @@ const stepGame = () => {
     return;
   }
   let foldCount = 0;
-  do {
-    $gameState.currentPlayerIdx++;
+  $gameState.currentPlayerIdx = ($gameState.currentPlayerIdx + 1) % $players.length;
+  while ($players[$gameState.currentPlayerIdx].hasFolded) {
     foldCount++;
     if ($gameState.currentPlayerIdx >= $players.length) {
       if (foldCount == $players.length - 1) break;
       $gameState.currentPlayerIdx = 0;
       foldCount = 0;
+      return;
     }
-  } while ($players[$gameState.currentPlayerIdx].hasFolded);
+    $gameState.currentPlayerIdx++;
+  }
   if (foldCount == $players.length - 1) {
     for (let i = 0; i < $players.length; i++) {
       if (!$players[i].hasFolded) $gameState.roundWinner = i;
