@@ -50,7 +50,8 @@ const stepGame = () => {
     $gameState.roundWinner = -1;
     return;
   }
-  let foldCount = 0;
+  $gameState.currentPlayerIdx++;
+  /* let foldCount = 0;
   while ($players[$gameState.currentPlayerIdx].hasFolded) {
     $gameState.currentPlayerIdx++;
     foldCount++;
@@ -59,18 +60,20 @@ const stepGame = () => {
       $gameState.currentPlayerIdx = 0;
       foldCount = 0;
     }
-  }
-  if (foldCount == $players.length - 1) {
+  } */
+  /* if (foldCount == $players.length - 1) {
     for (let i = 0; i < $players.length; i++) {
       if (!$players[i].hasFolded) $gameState.roundWinner = i;
     }
     console.log($gameState.roundWinner, $players);
     $gameState.atRoundEnd = true;
     return;
-  }
+  } */
   if ($gameState.currentPlayerIdx >= $players.length) {
     $gameState.currentPlayerIdx = 0;
     $gameState.currentHand++;
+
+    console.log('hello');
 
     if ($gameState.currentHand >= 3) {
       if ($gameState.didRoundEnd) {
@@ -342,12 +345,16 @@ const getCurrentHandName = () => {
         <div class=" grid w-full grid-cols-3 gap-3">
           <Button
             class="flex flex-col items-center gap-4 py-12"
-            on:click={() => {
-              raiseBet(
-                $gameState.currentPlayerIdx, Math.max(0, $gameState.minimumBet - $players[$gameState.currentPlayerIdx].currentBet)
-              );
-              $raiseValue = 0;
-              stepGame();
+            on:click={() => {              
+              if ($players[$gameState.currentPlayerIdx].currentBet >= $gameState.minimumBet) {                
+                stepGame();
+              } else {
+                raiseBet(
+                  $gameState.currentPlayerIdx, Math.max(0, $gameState.minimumBet - $players[$gameState.currentPlayerIdx].currentBet)
+                );
+                $raiseValue = 0;
+                stepGame();
+              }
             }}
           >
             <div>
